@@ -59,5 +59,50 @@ FROM AERONAVES
 WHERE País IN ('Itália', 'Japão')
 ORDER BY Código ASC, Ano ASC, PreçoTabela DESC;
 
+12.
+SELECT SUM(Preço * 0.10) AS LucroAdicional
+FROM TRANSAÇÕES
+WHERE Companhia = 'Aviamodelo';
+
+13. 
+SELECT Companhia, SUM(Preço) AS TotalLucro
+FROM TRANSAÇÕES
+GROUP BY Companhia
+ORDER BY TotalLucro DESC
+LIMIT 1;
+
+14.
+CREATE PROCEDURE ListarAeronavesCompanhia (IN NomeCompanhia VARCHAR(100))
+BEGIN
+    SELECT DISTINCT A.Fabricante, A.Modelo
+    FROM AERONAVES A
+    JOIN TRANSAÇÕES T ON A.Código = T.CodAeronave AND A.Ano = T.AnoAeronave
+    JOIN COMPANHIAS_AEREAS C ON T.Companhia = C.CNPJ
+    WHERE C.Nome = NomeCompanhia
+    
+    UNION
+    
+    SELECT DISTINCT A.Fabricante, A.Modelo
+    FROM AERONAVES A
+    JOIN HANGARES H ON A.Código = H.CodAeronave AND A.Ano = H.AnoAeronave
+    JOIN COMPANHIAS_AEREAS C ON H.CNPJCompanhia = C.CNPJ
+    WHERE C.Nome = NomeCompanhia;
+END;
+
+15.
+CREATE PROCEDURE ListarCompanhiasComMaisDe50Transacoes (
+    IN DataInicio DATE,
+    IN DataFim DATE
+)
+BEGIN
+    SELECT C.Nome AS CompanhiaAerea, COUNT(T.Companhia) AS TotalTransacoes
+    FROM TRANSAÇÕES T
+    JOIN COMPANHIAS_AEREAS C ON T.Companhia = C.CNPJ
+    WHERE T.Data BETWEEN DataInicio AND DataFim
+    GROUP BY C.Nome
+    HAVING COUNT(T.Companhia) > 50;
+END;
+
+
  
 
