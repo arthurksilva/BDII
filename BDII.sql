@@ -104,5 +104,133 @@ BEGIN
 END;
 
 
- 
+16.
+CREATE PROCEDURE ListarCompradoresAeronaves (
+    IN PaisAeronave VARCHAR(50),
+    IN FabricanteAeronave VARCHAR(50)
+)
+BEGIN
+    SELECT DISTINCT P.Nome, P.Sobrenome
+    FROM PASSAGEIROS P
+    JOIN TRANSAÇÕES T ON P.Passaporte = T.Comprador
+    JOIN AERONAVES A ON T.CodAeronave = A.Código AND T.AnoAeronave = A.Ano
+    WHERE A.País = PaisAeronave AND A.Fabricante = FabricanteAeronave;
+END;
+
+18.
+DELIMITER //
+
+CREATE TRIGGER LimitarComprasAnuais
+BEFORE INSERT ON TRANSAÇÕES
+FOR EACH ROW
+BEGIN
+    DECLARE ComprasAno INT;
+
+   
+    SELECT COUNT(*)
+    INTO ComprasAno
+    FROM TRANSAÇÕES
+    WHERE Comprador = NEW.Comprador
+      AND YEAR(Data) = YEAR(NEW.Data);
+
+    
+    IF ComprasAno >= 10 THEN
+        SIGNAL SQLSTATE '45000'
+        SET MESSAGE_TEXT = 'O passageiro não pode comprar mais de 10 aeronaves em um único ano.';
+    END IF;
+END;
+
+19.
+DELIMITER //
+
+CREATE TRIGGER VerificarPrecoTabela
+BEFORE INSERT OR UPDATE ON AERONAVES
+FOR EACH ROW
+BEGIN
+    DECLARE PrecoAnterior DECIMAL(10, 2);
+
+    
+    SELECT MAX(PrecoTabela)
+    INTO PrecoAnterior
+    FROM AERONAVES
+    WHERE Modelo = NEW.Modelo
+      AND Ano < NEW.Ano;
+
+    
+    IF PrecoAnterior IS NOT NULL AND NEW.PreçoTabela < PrecoAnterior THEN
+        SIGNAL SQLSTATE '45000'
+        SET MESSAGE_TEXT = 'O preço de tabela não pode ser menor que o de anos anteriores para o mesmo modelo.';
+    END IF;
+END;
+
+20.
+CREATE TRIGGER ValidarPrecoTransacao
+BEFORE INSERT ON TRANSAÇÕES
+FOR EACH ROW
+BEGIN
+    DECLARE PrecoTabela DECIMAL(10, 2);
+
+   
+    SELECT PrecoTabela
+    INTO PrecoTabela
+    FROM AERONAVES
+    WHERE Código = NEW.CodAeronave AND Ano = NEW.AnoAeronave;
+
+   
+    IF PrecoTabela IS NOT NULL AND NEW.Preço < (PrecoTabela * 0.85) THEN
+        SIGNAL SQLSTATE '45000'
+        SET MESSAGE_TEXT = 'O preço da transação não pode ser menor que 85% do preço de tabela da aeronave.';
+    END IF;
+END;
+
+21. 
+CREATE TRIGGER BloquearCompraSantosFrancesa
+BEFORE INSERT ON TRANSAÇÕES
+FOR EACH ROW
+BEGIN
+    DECLARE SobrenomeComprador VARCHAR(100);
+    DECLARE NacionalidadeAeronave VARCHAR(50);
+
+   
+    SELECT Sobrenome
+    INTO SobrenomeComprador
+    FROM PASSAGEIROS
+    WHERE Passaporte = NEW.Comprador;
+
+    
+    SELECT País
+    INTO NacionalidadeAeronave
+    FROM AERONAVES
+    WHERE Código = NEW.CodAeronave AND Ano = NEW.AnoAeronave;
+
+   
+    IF SobrenomeComprador = 'Santos' AND NacionalidadeAeronave = 'França' THEN
+        SIGNAL SQLSTATE '45000'
+        SET MESSAGE_TEXT = 'Pessoas com sobrenome "Santos" não podem comprar aeronaves de nacionalidade francesa.';
+    END IF;
+END;
+
+22.
+CREATE TRIGGER AjustarDataTransacao
+BEFORE INSERT ON TRANSAÇÕES
+FOR EACH ROW
+BEGIN
+    DECLARE DataMaisRecente DATE;
+
+    SELECT MAX(Data)
+    INTO DataMaisRecente
+    FROM TRANSAÇÕES;
+
+    IF DataMaisRecente IS NOT NULL AND NEW.Data < DataMaisRecente THEN
+        SET NEW.Data = DataMaisRecente;
+    END IF;
+END;
+
+
+
+
+
+
+
+
 
